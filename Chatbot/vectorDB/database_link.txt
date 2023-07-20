@@ -1,0 +1,6 @@
+Already created vector database can be found here. 
+
+Naming convention of database
+website_embeddingModel_vectorDBType_TextSplitter_noOfTokens
+
+VectorDB link: https://iitgnacin-my.sharepoint.com/:f:/g/personal/ary_pratap_iitgn_ac_in/EnZ6Lfg5N5dJiQqQ6okNlysBd21STM64_BMqMLq_cQESAw?e=qqBi0F
