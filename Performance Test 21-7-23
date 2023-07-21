@@ -1,0 +1,50 @@
+Entering new RetrievalQA chain...
+
+> Finished chain.
+
+
+> Question:
+Give me Btech Curriculum
+
+> Answer (took 8.79 s.):
+
+BTech(ICT) – 8 semesters 
+BTech(Honours in ICT) – 8 semesters 
+MTech(ICT) – 4 semesters 
+MSc (IT) – 4 semesters 
+MSc (ICT in ARD) – 4 semesters 
+MSDes (Communication Design) – 4 semesters 
+PhD – 2 to 4 semesters of course work followed by thesis work up to a maximum of 10 semesters
+
+
+> Entering new RetrievalQA chain...
+
+> Finished chain.
+
+
+> Question:
+Give me Institute Facilities
+
+> Answer (took 7.33 s.):
+
+The institute has well equipped laboratories, specialized equipments, campus-wide networking, 1GBps internet bandwidth, dedicated research labs for specific research areas and labs for sponsored projects as well as allowing interested students to carry out research that is required as a part of their curriculum in their respective programs. For example, the institute has a research lab for Information Retrieval and Speech Processing labs.
+
+
+> Entering new RetrievalQA chain...
+
+> Finished chain.
+
+
+> Question:
+Give me Mess facilities options
+
+> Answer (took 6.4 s.):
+
+The ICT committee has plans to upgrade the infrastructure with the involvement of faculties in-charge of different labs.
+
+Facilities include:
+- Upgrade of dedicated server facilities
+- Lab setup with networking devices (switch/ router)
+- Adequate staff with expertise in software/hardware implementation
+
+Clearing the memory after each iteration significantly improves 3B model performance from 23s to about 6 seconds.
