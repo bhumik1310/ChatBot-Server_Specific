@@ -1,0 +1,111 @@
+import torch , time
+from transformers import pipeline
+from langchain import PromptTemplate, LLMChain
+from langchain.chains import RetrievalQA
+from langchain.vectorstores import Chroma
+from langchain.embeddings import HuggingFaceEmbeddings
+from chromadb.config import Settings
+from langchain.llms import HuggingFacePipeline
+from langchain.memory import ConversationBufferMemory
+from fastapi import FastAPI, HTTPException
+
+
+# Create the FastAPI app
+app = FastAPI()
+
+generate_text = pipeline(model="databricks/dolly-v2-7b", torch_dtype=torch.bfloat16,
+                         trust_remote_code=True, device_map="auto", return_full_text=True)
+
+
+# create huggingface model pipeline
+hf_pipeline = HuggingFacePipeline(pipeline=generate_text)
+
+
+
+# Load embeddings model
+embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
+
+# Define ChromaDB parameters
+persist_directory = "AllMini_Chroma_Tik_400" # path to specific vector database
+CHROMA_SETTINGS = Settings(
+        chroma_db_impl='duckdb+parquet',
+        persist_directory=persist_directory,
+        anonymized_telemetry=False
+)
+
+# load vectorDB instance
+db = Chroma(persist_directory=persist_directory, embedding_function=embeddings, client_settings=CHROMA_SETTINGS)
+
+# Run sample query on vectorDB for context retrieval
+query = "What are the placement statistics?"
+docs = db.similarity_search_with_score(query)
+context = docs[0][0].page_content
+context
+
+
+# Custom prompt template
+prompt_template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
+{context}
+Question: {question} Explain in points.
+Helpful Answer:"""
+
+# langchain prompt template
+prompt_with_context = PromptTemplate(
+input_variables=["question", "context"],
+template= prompt_template)
+
+# Prompt template argument to be passed in RetrievalQA chain
+chain_type_kwargs = {"prompt": prompt_with_context}
+
+
+# load when storing previous chat history
+memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+# Cuda set to zero
+device = torch.device('cuda:0')
+
+# Using langchain RetrievalQA chain for answer generation
+qa = RetrievalQA.from_chain_type(llm=hf_pipeline, chain_type="stuff", retriever=db.as_retriever(),chain_type_kwargs=chain_type_kwargs, verbose=True)
+
+
+
+#set cuda to 0
+if torch.cuda.is_available():  
+  dev = "cuda:0" 
+else:  
+  dev = "cpu"  
+device = torch.device(dev)
+torch.set_default_device('cuda:0')
+torch.cuda.current_device()
+
+
+
+# Define the route for handling incoming POST requests
+@app.post('/api/askquery', response_model=dict)
+async def askquery(question: str):
+  try:
+    # Run cli interface of BOT
+    while True:
+        query = question
+        if query == "exit":
+            break
+        if query.strip() == "":
+            continue
+
+        # Get the answer from the chain
+        start = time.time()
+        res = qa(query)
+        answer, docs = res['result'], []
+        end = time.time()
+
+        # Print the result
+        print("\n\n> Question:")
+        print(query)
+        print(f"\n> Answer (took {round(end - start, 2)} s.):")
+        print(answer)
+        torch.cuda.empty_cache()
+
+
+        # Return the answer as a JSON response
+        return {"answer": answer}
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=str(e))
