@@ -68,7 +68,7 @@ qa = RetrievalQA.from_chain_type(llm=hf_pipeline, chain_type="stuff", retriever=
 
 
 
-#set cuda to 0
+#setting gpu to use
 if torch.cuda.is_available():  
   dev = "cuda:0" 
 else:  
