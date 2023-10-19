@@ -2,6 +2,13 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const sanitizeFilename = require('sanitize-filename');
 const path = require('path');
+const url = require('url');
+import { JSDOM } from 'jsdom';
+import { Readability } from '@mozilla/readability';
+const tldextract = require('tld-extract') 
+
+
+
 
 import { Dataset,CheerioCrawler } from 'crawlee';
 const fs = require('fs');
@@ -25,18 +32,24 @@ const crawler = new CheerioCrawler({
            .replace(/\s+/g, ' ');
          
         }
+        var dom = new JSDOM(body);
 
+        // Create a Readability object and parse the DOM document
+        var reader = new Readability(dom.window.document);
+        var article = reader.parse();    
+        var content = article.textContent;
         console.log(`The title: ${title}`);
         await Dataset.pushData({
             url:request.url,
-            page_content: cleanString(body)
+            content : content
+            // page_content: cleanString(body)
         })
     }
 })
 
 
 
-const csvFilePath = './OUTPUT.csv';
+const csvFilePath = './storage/key_value_stores/my-data/OUTPUT.csv';
 
 const columnValues = [];
 
@@ -61,6 +74,13 @@ fs.createReadStream(csvFilePath)
 
 // Start the crawler with the provided URLs
 await crawler.run(columnValues);
+// Crawler saves files temporarily as json in datasets
+
+
+
+// Check if the folder exists
+
+
 
 var arrayOfFiles=[]
 try {
@@ -95,8 +115,29 @@ try {
         // console.log(typeof appendData);
         const txt_filename = jsonData['url'] + '.txt';
         // console.log(txt_filename)
-        fs.writeFileSync('./CrawledData/'+sanitizeFilename(txt_filename),appendData);
-        console.log(sanitizeFilename(txt_filename));
+        const parsedUrl = new URL(jsonData['url']);
+        const domain = parsedUrl.hostname
+        domain.replace(/.+\/\/|www.|\..+/g,'');
+        const folderPath = domain
+        const totalPath = "./CrawledData/"+folderPath
+        //Check if the url has been crawled already or not
+        if (!fs.existsSync(totalPath)) {
+          // If it doesn't exist, create the folder
+          fs.mkdirSync(totalPath);
+          console.log(`Folder '${folderPath}' created.`);
+        } else { 
+          console.log(`Folder '${folderPath}' already exists.`);
+        }
+        const filename = sanitizeFilename(txt_filename)
+        const filePath = path.join(totalPath,filename);
+        fs.writeFile(filePath, appendData, (err) => {
+          if (err) {
+            console.error('Error writing the file:', err);
+          } else {
+            console.log(`File '${filename}' has been written to '${folderPath}'.`);
+          }
+        });
+        // console.log(sanitizeFilename(txt_filename));
     
     } catch (parseError) {
         console.error('Error parsing the JSON data:', parseError);
