@@ -4,19 +4,98 @@ const sanitizeFilename = require('sanitize-filename');
 const path = require('path');
 const url = require('url');
 import { JSDOM } from 'jsdom';
-import { Readability } from '@mozilla/readability';
+const request = require('request');
 const tldextract = require('tld-extract') 
 
 
 
+//Function that downloads PDF from a URL , and saves it to a specified Path.
+function downloadPDF(pdfUrl, savePath) {
+  const options = {
+    uri: pdfUrl,
+    headers: {
+      'User-Agent': 'Mozilla/5.0', // Set a User-Agent to avoid potential issues with some websites
+    },
+  };
+
+  request(options)
+    .pipe(fs.createWriteStream(savePath))
+    .on('close', () => {
+      console.log('PDF file has been downloaded and saved to:', savePath);
+    })
+    .on('error', (err) => {
+      console.error('Error downloading the PDF:', err);
+    });
+}
+
+// Function that reads the directory for files and return an array with a list of files to iterate over
+function readDir(directory){
+try {
+  arrayOfFiles = fs.readdirSync(directory)       //./storage/datasets/default <- Default for reading JSON files in the folder
+  // console.log(arrayOfFiles)
+  return arrayOfFiles
+} catch(e) {
+  console.log(e)
+}
+}
+
+
+//Function that checks if a folder is present, if not , it creates the folder.
+
+function is_directory_present(url,subdir){
+  const parsedUrl = new URL(url);  // Make and URL object out of the link and check if the folder of link is already present.
+  const domain = parsedUrl.hostname
+  domain.replace(/.+\/\/|www.|\..+/g,'');
+  const folderPath = domain
+  //pass
+  var totalPath = "./CrawledData/"+folderPath+subdir
+  //Check if the url has been crawled already or not (Check domain name folder)
+  if (!fs.existsSync(totalPath)) {
+    // If it doesn't exist, create the folder
+    fs.mkdirSync(totalPath);
+    console.log(`Folder '${folderPath}' created.`);
+    if_dir_made=1
+  } else { 
+    console.log(`Folder '${folderPath}' already exists.`);
+  }
+
+return totalPath
+
+}
+
+
+
+
+// Cheerio crawler instantiation 
 
 import { Dataset,CheerioCrawler } from 'crawlee';
+import { dir } from 'console';
 const fs = require('fs');
 const csv = require('csv-parser');
 
 const crawler = new CheerioCrawler({
     async requestHandler({ $,request,body }) {
-        const title = $('title').text();
+      // Check if the link is of a PDF or regular link
+      if ((request.url).includes('.pdf')|| (request.url).includes('.PDF')){
+
+        //Create folder with name of url
+        is_directory_present(request.url,'')
+        
+        //Create a seperate folder for PDFs inside the url folder and extract the totalPath of it
+        var totalPath = is_directory_present(request.url,'/PDF/')
+
+        // Calling the function to download the PDF and save it to the Folder.
+        var url = request.url;
+        
+        downloadPDF(url,totalPath+sanitizeFilename(url));
+
+
+ 
+
+
+
+      }
+       else{ const title = $('title').text();
 
         function cleanString(input) {
 
@@ -33,18 +112,18 @@ const crawler = new CheerioCrawler({
          
         }
         var dom = new JSDOM(body);
+        var doc = dom.window.document;
+        var bod = doc.querySelector('body');
+        var data = bod.textContent;
 
-        // Create a Readability object and parse the DOM document
-        var reader = new Readability(dom.window.document);
-        var article = reader.parse();    
-        var content = article.textContent;
         console.log(`The title: ${title}`);
         await Dataset.pushData({
             url:request.url,
-            content : content
             // page_content: cleanString(body)
-        })
-    }
+            content:data
+        })}
+    },
+    additionalMimeTypes:['application/pdf']
 })
 
 
@@ -81,14 +160,16 @@ await crawler.run(columnValues);
 // Check if the folder exists
 
 
-
-var arrayOfFiles=[]
+// Recieving an array of JSON files
+var arrayOfFiles=readDir("./storage/datasets/default");
 try {
-    arrayOfFiles = fs.readdirSync("./storage/datasets/default")
-    // console.log(arrayOfFiles)
-  } catch(e) {
-    console.log(e)
-  }
+  arrayOfFiles = fs.readdirSync("./storage/datasets/default")
+  // console.log(arrayOfFiles)
+} catch(e) {
+  console.log(e)
+}
+
+
   // Iterating over each file in a folder
   for (const element of arrayOfFiles){
     var filePath="./storage/datasets/default/"+element;
@@ -115,26 +196,14 @@ try {
         // console.log(typeof appendData);
         const txt_filename = jsonData['url'] + '.txt';
         // console.log(txt_filename)
-        const parsedUrl = new URL(jsonData['url']);
-        const domain = parsedUrl.hostname
-        domain.replace(/.+\/\/|www.|\..+/g,'');
-        const folderPath = domain
-        const totalPath = "./CrawledData/"+folderPath
-        //Check if the url has been crawled already or not
-        if (!fs.existsSync(totalPath)) {
-          // If it doesn't exist, create the folder
-          fs.mkdirSync(totalPath);
-          console.log(`Folder '${folderPath}' created.`);
-        } else { 
-          console.log(`Folder '${folderPath}' already exists.`);
-        }
+        const totalPath = is_directory_present(jsonData['url'],'')
         const filename = sanitizeFilename(txt_filename)
         const filePath = path.join(totalPath,filename);
         fs.writeFile(filePath, appendData, (err) => {
           if (err) {
             console.error('Error writing the file:', err);
           } else {
-            console.log(`File '${filename}' has been written to '${folderPath}'.`);
+            console.log(`File '${filename}' has been written to '${totalPath}}'.`);
           }
         });
         // console.log(sanitizeFilename(txt_filename));
@@ -144,3 +213,9 @@ try {
     }
 });
   }
+
+  // Iterating for PDF Files
+
+  // var arrayPDF=[]
+  // try: {}
+
