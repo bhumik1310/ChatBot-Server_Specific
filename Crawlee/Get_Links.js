@@ -10,7 +10,8 @@ const crawler = new CheerioCrawler({
         // Add all links from page to RequestQueue
         await enqueueLinks();
     },
-    maxRequestsPerCrawl: 50, // Limitation for only 10 requests (do not use if you want to crawl all links)
+    maxRequestsPerCrawl: 50,// Limitation for only 10 requests (do not use if you want to crawl all links)
+    additionalMimeTypes:['application/pdf'] //For Image/Jpegs , add 'application/{mime_type}'
 });
 
 // Run the crawler with initial request
